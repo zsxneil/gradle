@@ -1,0 +1,54 @@
+group 'com.my'
+version '2.0'
+
+
+
+
+apply plugin: 'java'
+
+sourceCompatibility = 1.8
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    testCompile group: 'junit', name: 'junit', version: '4.12'
+    compile group: 'mysql', name: 'mysql-connector-java', version: '5.1.46'
+
+}
+
+//在打包过程中根据profile替换对应的配置文件
+jar {
+    baseName = 'app'
+    manifest {
+        attributes(
+                "Manifest-Version": 1.0,
+                "Main-Class": "com.my.Application")
+    }
+
+    def env = System.getProperty("profile") ?: "dev"//用profile参数确定引用哪个配置文件 运存命令时添加-Dprofile=prod参数
+
+    def app_config="build/resources/main/application.properties"
+    def local_config="build/resources/main/application-local.properties"
+    def real_config="build/resources/main/application-prod.properties"
+    doFirst {
+        if ("prod".equals(env)) {
+            project.file(app_config).renameTo(local_config)
+            project.file(real_config).renameTo(app_config)
+        }
+    }
+    //***********打包时添加第三方依赖start************
+    from { configurations.compile.collect { it.isDirectory() ? it : zipTree(it) } }
+    into('assets') {
+        from 'assets'
+    }
+    //**********打包时添加第三方依赖end**************
+
+    doLast {
+        if ("prod".equals(env)) {
+            project.file(app_config).renameTo(real_config)
+            project.file(local_config).renameTo(app_config)
+        }
+    }
+}
